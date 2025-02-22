@@ -50,13 +50,13 @@ unet_transform = A.Compose([
 # Helper function to load images (GeoTIFF or standard)
 def load_image(uploaded_file):
     file_bytes = uploaded_file.read()
-    if uploaded_file.name.endswith('.tif'):  # Handle GeoTIFF
+    if uploaded_file.name.endswith('.tif'):
         with rasterio.open(BytesIO(file_bytes)) as src:
-            img = src.read([1, 2, 3])  # R, G, B (bands 4, 3, 2 from Sentinel-2)
-            img = np.moveaxis(img, 0, -1)  # [C, H, W] → [H, W, C]
-            img = (img / img.max() * 255).astype(np.uint8)  # Normalize to 0-255
+            img = src.read([1, 2, 3])
+            img = np.moveaxis(img, 0, -1)
+            img = (img / img.max() * 255).astype(np.uint8)
         return Image.fromarray(img)
-    else:  # Handle standard images (jpg, png)
+    else:
         return Image.open(BytesIO(file_bytes)).convert("RGB")
 
 # Inference Functions
@@ -98,7 +98,7 @@ with tab1:
     
     if uploaded_file:
         image = load_image(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        st.image(image, caption="Uploaded Image", use_container_width=True)  
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -134,9 +134,9 @@ with tab2:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.image(img1, caption="Before", use_column_width=True)
+            st.image(img1, caption="Before", use_container_width=True) 
         with col2:
-            st.image(img2, caption="After", use_column_width=True)
+            st.image(img2, caption="After", use_container_width=True)  
         
         if st.button("Detect Changes"):
             with st.spinner("Analyzing changes..."):
@@ -167,3 +167,4 @@ with tab2:
                     st.write("Changes Detected:")
                     for cls, ch in changes.items():
                         st.write(f"{cls}: {'+' if ch > 0 else ''}{ch:.2f}%")
+
