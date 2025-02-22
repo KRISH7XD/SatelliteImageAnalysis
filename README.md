@@ -77,6 +77,10 @@ Export.image.toDrive({
 - **Python** 3.11+
 - **CUDA-enabled GPU** (optional, e.g., NVIDIA RTX 3050)
 
+## Pretrained Models and Data
+- Download pretrained weights and sample data: [Google Drive Link](https://drive.google.com/your-link)
+- Place `.pth` files in `models/` and `.tif` files in `data/sentinel2/` and `data/masks/`.
+
 ## License
 This project is licensed under the [MIT License](LICENSE).
 
