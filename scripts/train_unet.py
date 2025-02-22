@@ -47,13 +47,13 @@ class DynamicWorldDataset(Dataset):
         
   
         with rasterio.open(img_path) as src:
-            img = src.read([1, 2, 3])  # R, G, B
-            img = np.moveaxis(img, 0, -1)  # [H, W, C]
-            img = (img / img.max() * 255).astype(np.uint8)  # Normalize to 0-255
+            img = src.read([1, 2, 3])  
+            img = np.moveaxis(img, 0, -1)
+            img = (img / img.max() * 255).astype(np.uint8) 
         
 
         with rasterio.open(mask_path) as src:
-            mask = src.read(1)  # Single band (0-8)
+            mask = src.read(1)  
         
         transformed = self.transform(image=img, mask=mask)
         return transformed["image"], transformed["mask"].long()
@@ -64,7 +64,7 @@ loader = DataLoader(dataset, batch_size=4, shuffle=True)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = UNet(in_channels=3, out_channels=9).to(device)  # 9 classes
+model = UNet(in_channels=3, out_channels=9).to(device)  
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 criterion = nn.CrossEntropyLoss()
 

@@ -3,7 +3,7 @@ from rasterio.enums import Resampling
 import numpy as np
 
 with rasterio.open("data/sentinel2/s2_2023.tif") as src:
-    scale_factor = 0.33  # Reduce to ~33% of original size
+    scale_factor = 0.33  
     new_height = int(src.height * scale_factor)
     new_width = int(src.width * scale_factor)
     data = src.read(out_shape=(src.count, new_height, new_width), resampling=Resampling.bilinear)

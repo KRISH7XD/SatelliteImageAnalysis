@@ -15,9 +15,8 @@ from transformers import ViTImageProcessor
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import rasterio
-from io import BytesIO
+import io  
 
-# Load Models
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cnn_model = SimpleCNN(num_classes=10).to(device)
 cnn_model.load_state_dict(torch.load("models/cnn_model.pth", map_location=device))
@@ -32,13 +31,13 @@ unet_model = UNet(in_channels=3, out_channels=9).to(device)
 unet_model.load_state_dict(torch.load("models/unet_model.pth", map_location=device))
 unet_model.eval()
 
-# Classes
+
 classes = ["AnnualCrop", "Forest", "Highway", "Industrial", "Pasture", 
            "PermanentCrop", "River", "SeaLake", "Urban", "HerbaceousVegetation"]
 dw_classes = ["Water", "Trees", "Grass", "Flooded Veg", "Crops", "Shrub/Scrub", "Built", "Bare", "Snow/Ice"]
 colors = ["blue", "green", "lightgreen", "cyan", "yellow", "brown", "gray", "beige", "white"]
 
-# Preprocessing
+
 cnn_transform = transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])
 vit_transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 unet_transform = A.Compose([
@@ -47,19 +46,19 @@ unet_transform = A.Compose([
     ToTensorV2()
 ])
 
-# Helper function to load images (GeoTIFF or standard)
+
 def load_image(uploaded_file):
     file_bytes = uploaded_file.read()
     if uploaded_file.name.endswith('.tif'):
-        with rasterio.open(BytesIO(file_bytes)) as src:
+        with rasterio.open(io.BytesIO(file_bytes)) as src:
             img = src.read([1, 2, 3])
             img = np.moveaxis(img, 0, -1)
             img = (img / img.max() * 255).astype(np.uint8)
         return Image.fromarray(img)
     else:
-        return Image.open(BytesIO(file_bytes)).convert("RGB")
+        return Image.open(io.BytesIO(file_bytes)).convert("RGB")
 
-# Inference Functions
+
 def classify_cnn(img):
     img_tensor = cnn_transform(img).unsqueeze(0).to(device)
     with torch.no_grad():
@@ -84,21 +83,21 @@ def segment_image(img):
         mask = torch.argmax(output, dim=1).squeeze().cpu().numpy()
     return mask
 
-# Streamlit UI
+
 st.title("Satellite Image Analysis (Dynamic World)")
 st.sidebar.title("About")
 st.sidebar.write("Using Dynamic World + Sentinel-2 for land use and change detection.")
 
 tab1, tab2 = st.tabs(["Land Use Analysis", "Change Detection"])
 
-# Tab 1: Land Use Analysis
+
 with tab1:
     st.header("Land Use Analysis")
     uploaded_file = st.file_uploader("Upload a satellite image", type=["jpg", "png", "tif"], key="class")
     
     if uploaded_file:
         image = load_image(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)  
+        st.image(image, caption="Uploaded Image", use_container_width=True)
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -115,14 +114,21 @@ with tab1:
             if st.button("Segment (U-Net)"):
                 with st.spinner("Running U-Net..."):
                     mask = segment_image(image)
-                    plt.imshow(mask, cmap="tab10")
-                    plt.title("Segmentation Map")
-                    st.pyplot(plt)
+                    fig, ax = plt.subplots()
+                    ax.imshow(mask, cmap="tab10")
+                    ax.set_title("Segmentation Map")
+                    st.pyplot(fig)
+  
+                    buf = io.BytesIO()
+                    plt.savefig(buf, format="png", bbox_inches="tight")
+                    buf.seek(0)
+                    st.download_button("Download Map", buf.getvalue(), "segmentation.png")
+                    plt.close(fig)
                     st.write("Legend:")
                     for cls, color in zip(dw_classes, colors):
                         st.write(f"{cls}: {color}")
 
-# Tab 2: Change Detection
+
 with tab2:
     st.header("Change Detection")
     file1 = st.file_uploader("Image 1 (Before)", type=["jpg", "png", "tif"], key="before")
@@ -134,9 +140,9 @@ with tab2:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.image(img1, caption="Before", use_container_width=True) 
+            st.image(img1, caption="Before", use_container_width=True)
         with col2:
-            st.image(img2, caption="After", use_container_width=True)  
+            st.image(img2, caption="After", use_container_width=True)
         
         if st.button("Detect Changes"):
             with st.spinner("Analyzing changes..."):
@@ -146,6 +152,7 @@ with tab2:
                 diff = (mask1 != mask2).astype(np.uint8)
                 change_area = np.sum(diff) / (256 * 256) * 100
                 
+
                 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
                 ax1.imshow(mask1, cmap="tab10")
                 ax1.set_title("Before")
@@ -154,6 +161,18 @@ with tab2:
                 ax3.imshow(diff, cmap="Reds")
                 ax3.set_title("Change Map (Red = Changed)")
                 st.pyplot(fig)
+
+                for ax, title, filename in [(ax1, "Before", "before_map.png"), 
+                                           (ax2, "After", "after_map.png"), 
+                                           (ax3, "Change Map", "change_map.png")]:
+                    buf = io.BytesIO()
+                    fig = plt.figure()
+                    plt.imshow(ax.get_images()[0].get_array(), cmap=ax.get_images()[0].cmap)
+                    plt.title(title)
+                    plt.savefig(buf, format="png", bbox_inches="tight")
+                    buf.seek(0)
+                    st.download_button(f"Download {title}", buf.getvalue(), filename)
+                    plt.close(fig)
                 
                 st.write(f"Change Percentage: **{change_area:.2f}%**")
                 changes = {}
@@ -167,4 +186,4 @@ with tab2:
                     st.write("Changes Detected:")
                     for cls, ch in changes.items():
                         st.write(f"{cls}: {'+' if ch > 0 else ''}{ch:.2f}%")
-
+                plt.close('all')
