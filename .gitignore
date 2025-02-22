@@ -1,0 +1,4 @@
+models/*.pth 
+data/sentinel2/* 
+data/masks/* 
+data/eurosat/* 

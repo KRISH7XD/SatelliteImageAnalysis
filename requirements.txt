@@ -1,0 +1,9 @@
+streamlit
+torch
+torchvision
+transformers
+rasterio
+matplotlib
+numpy
+pillow
+albumentations
